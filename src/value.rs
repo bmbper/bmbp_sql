@@ -1,4 +1,7 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Map;
+use std::collections::HashMap;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum RdbcValue {
     Char(char),
@@ -16,6 +19,8 @@ pub enum RdbcValue {
     TimeStamp(u64),
     Bytes(Vec<u8>),
     Boolean(bool),
+    Array(Vec<RdbcValue>),
+    Object(HashMap<String, RdbcValue>),
     Null,
 }
 
