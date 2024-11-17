@@ -1,9 +1,9 @@
 use crate::build::dql::{ConditionBuilder, TableBuilder};
 use crate::wrapper::{RdbcDeleteWrapper, RdbcInsertWrapper, RdbcUpdateWrapper};
+use crate::{JoinTable, RdbcTable};
 
 impl RdbcInsertWrapper {}
 
-impl TableBuilder for RdbcInsertWrapper {}
 impl ConditionBuilder for RdbcInsertWrapper {}
 
 impl RdbcUpdateWrapper {}

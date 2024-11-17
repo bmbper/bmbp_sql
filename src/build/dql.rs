@@ -32,11 +32,11 @@ impl RdbcQueryWrapper {
     }
 }
 impl RdbcQueryWrapper {
-    pub fn select<T>(&mut self, columns: T) -> &mut Self
+    pub fn select<T>(&mut self, column: T) -> &mut Self
     where
         T: RdbcColumnIdent,
     {
-        self.select_columns.push(RdbcColumn::from(columns));
+        self.select_columns.push(RdbcColumn::from(column));
         self
     }
 

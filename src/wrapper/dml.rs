@@ -13,7 +13,7 @@ pub struct RdbcInsertWrapper {
 }
 #[derive(Debug, Clone)]
 pub struct RdbcUpdateWrapper {
-    table: RdbcTable,
+    pub(crate) table: RdbcTable,
     column_dml: Vec<DmlColumn>,
     condition: Option<RdbcCondition>,
     limit_count: Option<u64>,

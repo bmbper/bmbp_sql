@@ -5,7 +5,7 @@ pub fn test_query_wrapper() {
     let mut query = RdbcQueryWrapper::new();
     query.build_join(|| -> JoinTable {
         let join_table = JoinTable {
-            table: RdbcQueryWrapper::new().into(),
+            table: RdbcTable::from("abc"),
             join_type: bmbp_sql::JoinType::Inner,
             condition: None,
         };
@@ -13,7 +13,7 @@ pub fn test_query_wrapper() {
     });
     query.join({
         let mut c = JoinTable {
-            table: RdbcQueryWrapper::new().into(),
+            table: RdbcTable::from("ccc"),
             join_type: bmbp_sql::JoinType::Inner,
             condition: None,
         };

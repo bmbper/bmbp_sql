@@ -93,7 +93,9 @@ pub struct QueryColumn {
 }
 #[derive(Clone, Debug)]
 pub struct FuncColumn {
-    pub func: RdbcFunc,
+    pub columns: Vec<RdbcColumn>,
+    pub func_type: RdbcFunc,
+    pub separator: String,
     pub column_alias: String,
 }
 #[derive(Clone, Debug)]
@@ -103,16 +105,6 @@ pub struct ValueColumn {
 }
 #[derive(Clone, Debug)]
 pub enum RdbcFunc {
-    Single(SingleColumnFunc),
-    Multi(MultiColumnFunc),
-}
-#[derive(Clone, Debug)]
-pub struct SingleColumnFunc {
-    pub func_type: SingleFuncType,
-    pub column: RdbcColumn,
-}
-#[derive(Clone, Debug)]
-pub enum SingleFuncType {
     Count,
     Sum,
     Avg,
@@ -126,15 +118,6 @@ pub enum SingleFuncType {
     Date,
     Abs,
     Floor,
-}
-#[derive(Clone, Debug)]
-pub struct MultiColumnFunc {
-    pub func_type: MultiFuncType,
-    pub column: Vec<RdbcColumn>,
-    pub separator: String,
-}
-#[derive(Clone, Debug)]
-pub enum MultiFuncType {
     Concat,
     DateDiff,
     DateAdd,
@@ -224,28 +207,15 @@ where
         })
     }
 }
-impl<T> From<T> for RdbcTable
-where
-    T: RdbcColumnIdent,
-{
-    fn from(value: T) -> Self {
-        RdbcTable::SchemaTable(SchemaTable {
-            schema: value.schema(),
-            table_name: value.table(),
-            table_alias: value.table_alias(),
-        })
-    }
-}
-
 impl<T> From<T> for RdbcColumn
 where
     T: RdbcColumnIdent,
 {
     fn from(value: T) -> Self {
         RdbcColumn::TableColumn(TableColumn {
-            table: Some(RdbcTable::from(value)),
-            column_name: "".to_string(),
-            column_alias: "".to_string(),
+            table: Some(RdbcTable::from(value.table())),
+            column_name: value.column(),
+            column_alias: value.column_alias(),
         })
     }
 }

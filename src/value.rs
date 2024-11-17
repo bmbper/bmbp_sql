@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use serde_json::Map;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -350,16 +349,6 @@ impl From<&Option<isize>> for RdbcValue {
     }
 }
 
-impl From<i8> for RdbcValue {
-    fn from(value: i8) -> Self {
-        RdbcValue::SmallInt(value)
-    }
-}
-impl From<&i8> for RdbcValue {
-    fn from(value: &i8) -> Self {
-        RdbcValue::SmallInt(value.clone())
-    }
-}
 impl From<Option<u8>> for RdbcValue {
     fn from(value: Option<u8>) -> Self {
         match value {
@@ -726,7 +715,7 @@ impl From<&Option<Vec<u8>>> for RdbcValue {
     }
 }
 impl From<Option<&Vec<u8>>> for RdbcValue {
-    fn from(value: &Option<&Vec<u8>>) -> Self {
+    fn from(value: Option<&Vec<u8>>) -> Self {
         match value {
             Some(v) => RdbcValue::Bytes(v.to_vec()),
             None => RdbcValue::Null,
