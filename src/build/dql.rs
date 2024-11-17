@@ -1,10 +1,27 @@
 use crate::wrapper::{
     RdbcColumn, RdbcColumnIdent, RdbcModel, RdbcQueryWrapper, RdbcTable, RdbcTableIdent,
 };
+use crate::{JoinTable, RdbcCondition};
 use std::collections::HashMap;
 
-pub trait TableBuilder {}
-pub trait ConditionBuilder {}
+pub trait TableBuilder {
+    fn table_mut(&mut self) -> &mut Vec<RdbcTable>;
+    fn join_table_mut(&mut self) -> &mut Vec<JoinTable>;
+    fn from<T>(&mut self, table: T) -> &mut Self
+    where
+        T: RdbcTableIdent,
+    {
+        self.table_mut().push(RdbcTable::from((
+            table.schema(),
+            table.table(),
+            table.table_alias(),
+        )));
+        self
+    }
+}
+pub trait ConditionBuilder {
+    fn condition_mut(&mut self) -> &mut RdbcCondition;
+}
 
 impl RdbcQueryWrapper {
     pub fn new() -> Self {
@@ -59,5 +76,19 @@ impl RdbcQueryWrapper {
     }
 }
 
-impl TableBuilder for RdbcQueryWrapper {}
-impl ConditionBuilder for RdbcQueryWrapper {}
+impl TableBuilder for RdbcQueryWrapper {
+    fn table_mut(&mut self) -> &mut Vec<RdbcTable> {
+        &mut self.from_table
+    }
+    fn join_table_mut(&mut self) -> &mut Vec<JoinTable> {
+        &mut self.join_table
+    }
+}
+impl ConditionBuilder for RdbcQueryWrapper {
+    fn condition_mut(&mut self) -> &mut RdbcCondition {
+        if self.where_condition.is_none() {
+            self.where_condition = Some(RdbcCondition::new());
+        }
+        self.where_condition.as_mut().unwrap()
+    }
+}

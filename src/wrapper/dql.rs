@@ -135,6 +135,16 @@ pub struct RdbcCondition {
     kind: ConditionKind,
     column: Vec<ConditionColumn>,
 }
+
+impl RdbcCondition {
+    pub(crate) fn new() -> RdbcCondition {
+        RdbcCondition {
+            kind: ConditionKind::AND,
+            column: vec![],
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum ConditionColumn {
     Compare(CompareColumn),
@@ -207,6 +217,22 @@ where
         })
     }
 }
+
+impl<S, T, A> From<(S, T, A)> for RdbcTable
+where
+    S: ToString,
+    T: ToString,
+    A: ToString,
+{
+    fn from((s, t, a): (S, T, A)) -> Self {
+        RdbcTable::SchemaTable(SchemaTable {
+            schema: s.to_string(),
+            table_name: t.to_string(),
+            table_alias: a.to_string(),
+        })
+    }
+}
+
 impl<T> From<T> for RdbcColumn
 where
     T: RdbcColumnIdent,
