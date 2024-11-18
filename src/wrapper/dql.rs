@@ -159,6 +159,7 @@ pub enum ConditionKind {
 pub struct CompareColumn {
     pub column: RdbcColumn,
     pub kind: CompareKind,
+    pub value: RdbcColumnValue,
 }
 
 #[derive(Clone, Debug)]
@@ -192,6 +193,29 @@ pub enum RdbcColumnValue {
     RdbcValue(RdbcValue),
     ScriptValue(String),
     NullValue,
+}
+
+impl From<RdbcValue> for RdbcColumnValue {
+    fn from(value: RdbcValue) -> Self {
+        RdbcColumnValue::RdbcValue(value)
+    }
+}
+
+impl From<RdbcColumn> for RdbcColumnValue {
+    fn from(value: RdbcColumn) -> Self {
+        RdbcColumnValue::ColumnValue(value)
+    }
+}
+
+impl From<String> for RdbcColumnValue {
+    fn from(value: String) -> Self {
+        RdbcColumnValue::ScriptValue(value)
+    }
+}
+impl From<&str> for RdbcColumnValue {
+    fn from(value: &str) -> Self {
+        RdbcColumnValue::ScriptValue(value.to_string())
+    }
 }
 
 #[derive(Debug, Clone)]

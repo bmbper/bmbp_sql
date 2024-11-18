@@ -1,7 +1,7 @@
 use crate::wrapper::{
     RdbcColumn, RdbcColumnIdent, RdbcModel, RdbcQueryWrapper, RdbcTable, RdbcTableIdent,
 };
-use crate::{JoinTable, RdbcCondition};
+use crate::{CompareColumn, CompareKind, JoinTable, RdbcColumnValue, RdbcCondition, RdbcValue};
 use std::collections::HashMap;
 
 pub trait TableBuilder {
@@ -21,6 +21,18 @@ pub trait TableBuilder {
 }
 pub trait ConditionBuilder {
     fn condition_mut(&mut self) -> &mut RdbcCondition;
+    fn eq_v<T, V>(&mut self, column: T, value: V) -> &mut Self
+    where
+        T: RdbcColumnIdent,
+        V: ToString,
+    {
+        self.condition_mut().push(CompareColumn {
+            column: RdbcColumn::from(column),
+            kind: CompareKind::Equal,
+            value: RdbcColumnValue::from(RdbcValue::from(value.to_string())),
+        });
+        self
+    }
 }
 
 impl RdbcQueryWrapper {
