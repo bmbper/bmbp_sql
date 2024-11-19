@@ -1,6 +1,7 @@
 use crate::wrapper::{
     RdbcColumn, RdbcColumnIdent, RdbcModel, RdbcQueryWrapper, RdbcTable, RdbcTableIdent,
 };
+use crate::ConditionKind::AND;
 use crate::{CompareColumn, CompareKind, JoinTable, RdbcColumnValue, RdbcCondition, RdbcValue};
 use std::collections::HashMap;
 
@@ -35,6 +36,17 @@ pub trait ConditionBuilder {
     }
 }
 
+impl Default for RdbcCondition {
+    fn default() -> Self {
+        RdbcCondition {
+            kind: AND,
+            column: vec![],
+        }
+    }
+}
+
+impl RdbcCondition {}
+
 impl RdbcQueryWrapper {
     pub fn new() -> Self {
         RdbcQueryWrapper {
@@ -51,7 +63,7 @@ impl RdbcQueryWrapper {
             params: HashMap::new(),
         }
     }
-    pub fn from<T>() -> Self
+    pub fn new_from<T>() -> Self
     where
         T: RdbcModel,
     {
@@ -76,6 +88,21 @@ impl RdbcQueryWrapper {
         for col in columns {
             self.select_columns.push(RdbcColumn::from(col));
         }
+        self
+    }
+
+    pub fn select_slice<T>(&mut self, columns: &[T]) -> &mut Self
+    where
+        T: RdbcColumnIdent,
+    {
+        for col in columns {
+            self.select_columns.push(RdbcColumn::from(col));
+        }
+        self
+    }
+
+    pub fn select_column(&mut self, column: RdbcColumn) -> &mut Self {
+        self.select_columns.push(column);
         self
     }
 

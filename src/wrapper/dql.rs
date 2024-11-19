@@ -132,8 +132,8 @@ pub enum RdbcFunc {
 }
 #[derive(Clone, Debug)]
 pub struct RdbcCondition {
-    kind: ConditionKind,
-    column: Vec<ConditionColumn>,
+    pub(crate) kind: ConditionKind,
+    pub(crate) column: Vec<ConditionColumn>,
 }
 
 impl RdbcCondition {
@@ -160,6 +160,7 @@ pub struct CompareColumn {
     pub column: RdbcColumn,
     pub kind: CompareKind,
     pub value: RdbcColumnValue,
+    pub ignore_null: bool,
 }
 
 #[derive(Clone, Debug)]
