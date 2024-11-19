@@ -10,13 +10,13 @@ pub trait TableBuilder {
     fn join_table_mut(&mut self) -> &mut Vec<JoinTable>;
     fn from<T>(&mut self, table: T) -> &mut Self
     where
-        T: RdbcTableIdent,
+        T: ToString,
     {
-        self.table_mut().push(RdbcTable::from((
-            table.schema(),
-            table.table(),
-            table.table_alias(),
-        )));
+        self.table_mut().push(RdbcTable::new(
+            "".to_string(),
+            table.to_string(),
+            "".to_string(),
+        ));
         self
     }
 }
@@ -25,13 +25,9 @@ pub trait ConditionBuilder {
     fn eq_v<T, V>(&mut self, column: T, value: V) -> &mut Self
     where
         T: RdbcColumnIdent,
-        V: ToString,
+        RdbcValue: From<V>,
     {
-        self.condition_mut().push(CompareColumn {
-            column: RdbcColumn::from(column),
-            kind: CompareKind::Equal,
-            value: RdbcColumnValue::from(RdbcValue::from(value.to_string())),
-        });
+        self.condition_mut().eq_v(column, value);
         self
     }
 }
@@ -93,10 +89,10 @@ impl RdbcQueryWrapper {
 
     pub fn select_slice<T>(&mut self, columns: &[T]) -> &mut Self
     where
-        T: RdbcColumnIdent,
+        T: RdbcColumnIdent + Clone,
     {
         for col in columns {
-            self.select_columns.push(RdbcColumn::from(col));
+            self.select_columns.push(RdbcColumn::from(col.clone()));
         }
         self
     }

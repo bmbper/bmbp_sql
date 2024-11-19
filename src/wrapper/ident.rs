@@ -42,7 +42,6 @@ pub trait RdbcColumnIdent {
         "".to_string()
     }
 }
-
 impl<T> RdbcTableIdent for T
 where
     T: ToString,

@@ -34,6 +34,17 @@ pub enum RdbcTable {
     SQLTable(SQLTable),
     QueryTable(QueryTable),
 }
+
+impl RdbcTable {
+    pub(crate) fn new(schema: String, table: String, alias: String) -> RdbcTable {
+        RdbcTable::SchemaTable(SchemaTable {
+            schema,
+            table_name: table,
+            table_alias: alias,
+        })
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct SchemaTable {
     pub schema: String,
@@ -143,6 +154,19 @@ impl RdbcCondition {
             column: vec![],
         }
     }
+    pub(crate) fn eq_v<T, V>(&mut self, column: T, value: V) -> &mut Self
+    where
+        T: RdbcColumnIdent,
+        RdbcValue: From<V>,
+    {
+        self.column.push(ConditionColumn::Compare(CompareColumn {
+            column: column.into(),
+            kind: CompareKind::Equal,
+            value: RdbcColumnValue::StaticValue(RdbcValue::from(value)),
+            ignore_null: false,
+        }));
+        self
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -191,14 +215,14 @@ pub enum CompareLikeKind {
 #[derive(Debug, Clone)]
 pub enum RdbcColumnValue {
     ColumnValue(RdbcColumn),
-    RdbcValue(RdbcValue),
+    StaticValue(RdbcValue),
     ScriptValue(String),
     NullValue,
 }
 
 impl From<RdbcValue> for RdbcColumnValue {
     fn from(value: RdbcValue) -> Self {
-        RdbcColumnValue::RdbcValue(value)
+        RdbcColumnValue::StaticValue(value)
     }
 }
 
@@ -239,21 +263,6 @@ where
             schema: value.schema(),
             table_name: value.table(),
             table_alias: value.table_alias(),
-        })
-    }
-}
-
-impl<S, T, A> From<(S, T, A)> for RdbcTable
-where
-    S: ToString,
-    T: ToString,
-    A: ToString,
-{
-    fn from((s, t, a): (S, T, A)) -> Self {
-        RdbcTable::SchemaTable(SchemaTable {
-            schema: s.to_string(),
-            table_name: t.to_string(),
-            table_alias: a.to_string(),
         })
     }
 }
