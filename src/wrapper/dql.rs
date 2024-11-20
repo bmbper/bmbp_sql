@@ -91,6 +91,7 @@ pub enum RdbcColumn {
     FuncColumn(FuncColumn),
     ValueColumn(ValueColumn),
 }
+
 #[derive(Clone, Debug)]
 pub struct TableColumn {
     pub table: Option<RdbcTable>,
@@ -156,11 +157,11 @@ impl RdbcCondition {
     }
     pub(crate) fn eq_v<T, V>(&mut self, column: T, value: V) -> &mut Self
     where
-        T: RdbcColumnIdent,
+        RdbcColumn: From<T>,
         RdbcValue: From<V>,
     {
         self.column.push(ConditionColumn::Compare(CompareColumn {
-            column: column.into(),
+            column: RdbcColumn::from(column),
             kind: CompareKind::Equal,
             value: RdbcColumnValue::StaticValue(RdbcValue::from(value)),
             ignore_null: false,
@@ -256,26 +257,26 @@ pub enum OrderType {
 
 impl<T> From<T> for RdbcTable
 where
-    T: RdbcTableIdent,
+    T: ToString,
 {
     fn from(value: T) -> Self {
         RdbcTable::SchemaTable(SchemaTable {
-            schema: value.schema(),
-            table_name: value.table(),
-            table_alias: value.table_alias(),
+            schema: "".to_string(),
+            table_name: value.to_string(),
+            table_alias: "".to_string(),
         })
     }
 }
 
 impl<T> From<T> for RdbcColumn
 where
-    T: RdbcColumnIdent,
+    T: ToString,
 {
     fn from(value: T) -> Self {
         RdbcColumn::TableColumn(TableColumn {
-            table: Some(RdbcTable::from(value.table())),
-            column_name: value.column(),
-            column_alias: value.column_alias(),
+            table: None,
+            column_name: value.to_string(),
+            column_alias: "".to_string(),
         })
     }
 }
