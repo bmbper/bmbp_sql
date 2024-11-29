@@ -168,6 +168,19 @@ impl RdbcCondition {
         }));
         self
     }
+    pub(crate) fn like<C, V>(&mut self, column: C, value: V) -> &mut Self
+    where
+        RdbcColumn: From<C>,
+        RdbcValue: From<V>,
+    {
+        self.column.push(ConditionColumn::Compare(CompareColumn {
+            column: RdbcColumn::from(column),
+            kind: CompareKind::Like(CompareLikeKind::Both),
+            value: RdbcColumnValue::StaticValue(RdbcValue::from(value)),
+            ignore_null: false,
+        }));
+        self
+    }
 }
 
 #[derive(Clone, Debug)]

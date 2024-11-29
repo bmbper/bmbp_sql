@@ -1,5 +1,5 @@
 use crate::wrapper::{RdbcColumn, RdbcQueryWrapper, RdbcTable};
-use crate::RdbcCondition;
+use crate::{RdbcCondition, RdbcValue};
 use std::collections::HashMap;
 
 impl RdbcQueryWrapper {
@@ -58,6 +58,18 @@ impl RdbcQueryWrapper {
         RdbcTable: From<T>,
     {
         self.from_table.push(RdbcTable::from(table));
+        self
+    }
+
+    pub fn like<C, V>(&mut self, column: C, v: V) -> &mut Self
+    where
+        RdbcColumn: From<C>,
+        RdbcValue: From<V>,
+    {
+        if self.where_condition.is_none() {
+            self.where_condition = Some(RdbcCondition::new());
+        }
+        self.where_condition.as_mut().like(column, v);
         self
     }
 }
