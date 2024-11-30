@@ -38,6 +38,14 @@ impl RdbcTable {
             table_alias: alias.into(),
         })
     }
+
+    pub fn table_alias(&self) -> String {
+        match self {
+            RdbcTable::SchemaTable(schema_table) => schema_table.table_alias.clone(),
+            RdbcTable::SQLTable(sql_table) => sql_table.table_alias.clone(),
+            RdbcTable::QueryTable(query_table) => query_table.table_alias.clone(),
+        }
+    }
 }
 
 /// Schema table structure.

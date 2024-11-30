@@ -22,6 +22,82 @@ pub enum RdbcValue {
     Object(HashMap<String, RdbcValue>),
     Null,
 }
+impl RdbcValue {
+    pub fn is_object(&self) -> bool {
+        match self {
+            RdbcValue::Object(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_array(&self) -> bool {
+        match self {
+            RdbcValue::Array(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_string(&self) -> bool {
+        match self {
+            RdbcValue::Char(_)
+            | RdbcValue::Varchar(_)
+            | RdbcValue::Text(_)
+            | RdbcValue::LongText(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_number(&self) -> bool {
+        match self {
+            RdbcValue::SmallInt(_)
+            | RdbcValue::Int(_)
+            | RdbcValue::BigInt(_)
+            | RdbcValue::Double(_)
+            | RdbcValue::BigDouble(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_datetime(&self) -> bool {
+        match self {
+            RdbcValue::DateTime(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_date(&self) -> bool {
+        match self {
+            RdbcValue::Date(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_time(&self) -> bool {
+        match self {
+            RdbcValue::Time(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_bytes(&self) -> bool {
+        match self {
+            RdbcValue::Bytes(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_null(&self) -> bool {
+        match self {
+            RdbcValue::Null => true,
+            _ => false,
+        }
+    }
+
+    pub fn as_object(&self) -> Option<&HashMap<String, RdbcValue>> {
+        match self {
+            RdbcValue::Object(v) => Some(v),
+            _ => None,
+        }
+    }
+    pub fn as_array(&self) -> Option<&Vec<RdbcValue>> {
+        match self {
+            RdbcValue::Array(v) => Some(v),
+            _ => None,
+        }
+    }
+}
 
 impl From<char> for RdbcValue {
     fn from(value: char) -> Self {
