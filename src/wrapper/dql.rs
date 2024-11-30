@@ -1,33 +1,23 @@
-use crate::wrapper::{RdbcColumnIdent, RdbcTableIdent};
 use crate::RdbcValue;
 use std::collections::HashMap;
 
+/// Query wrapper to construct complex SQL queries.
 #[derive(Clone, Debug)]
 pub struct RdbcQueryWrapper {
     pub select_columns: Vec<RdbcColumn>,
     pub from_table: Vec<RdbcTable>,
     pub join_table: Vec<JoinTable>,
     pub where_condition: Option<RdbcCondition>,
-    pub(crate) group_columns: Vec<RdbcColumn>,
-    pub(crate) having_condition: Option<RdbcCondition>,
-    pub(crate) order_columns: Vec<RdbcOrder>,
-    pub(crate) union_table: Vec<UnionTable>,
-    pub(crate) limit_count: Option<u64>,
-    pub(crate) offset_count: Option<u64>,
-    pub(crate) params: HashMap<String, RdbcValue>,
+    pub group_columns: Vec<RdbcColumn>,
+    pub having_condition: Option<RdbcCondition>,
+    pub order_columns: Vec<RdbcOrder>,
+    pub union_table: Vec<UnionTable>,
+    pub limit_count: Option<u64>,
+    pub offset_count: Option<u64>,
+    pub params: HashMap<String, RdbcValue>,
 }
 
-impl RdbcQueryWrapper {
-    pub fn build_join(&mut self, builder: fn() -> JoinTable) -> &mut Self {
-        self.join_table.push(builder());
-        self
-    }
-    pub fn join(&mut self, table: JoinTable) -> &mut Self {
-        self.join_table.push(table);
-        self
-    }
-}
-
+/// Representation of a database table in a query.
 #[derive(Clone, Debug)]
 pub enum RdbcTable {
     SchemaTable(SchemaTable),
@@ -36,37 +26,51 @@ pub enum RdbcTable {
 }
 
 impl RdbcTable {
-    pub(crate) fn new(schema: String, table: String, alias: String) -> RdbcTable {
+    /// Constructs a new schema table.
+    pub fn new(
+        schema: impl Into<String>,
+        table: impl Into<String>,
+        alias: impl Into<String>,
+    ) -> Self {
         RdbcTable::SchemaTable(SchemaTable {
-            schema,
-            table_name: table,
-            table_alias: alias,
+            schema: schema.into(),
+            table_name: table.into(),
+            table_alias: alias.into(),
         })
     }
 }
 
+/// Schema table structure.
 #[derive(Clone, Debug)]
 pub struct SchemaTable {
     pub schema: String,
     pub table_name: String,
     pub table_alias: String,
 }
+
+/// SQL table structure for raw SQL queries.
 #[derive(Clone, Debug)]
 pub struct SQLTable {
     pub sql: String,
     pub table_alias: String,
 }
+
+/// Query table structure for subqueries.
 #[derive(Clone, Debug)]
 pub struct QueryTable {
     pub query: RdbcQueryWrapper,
     pub table_alias: String,
 }
+
+/// Join table structure for join operations.
 #[derive(Clone, Debug)]
 pub struct JoinTable {
     pub table: RdbcTable,
     pub join_type: JoinType,
     pub condition: Option<RdbcCondition>,
 }
+
+/// Types of SQL joins.
 #[derive(Clone, Debug)]
 pub enum JoinType {
     Inner,
@@ -74,16 +78,22 @@ pub enum JoinType {
     Right,
     Full,
 }
+
+/// Union table structure for union queries.
 #[derive(Clone, Debug)]
 pub struct UnionTable {
     pub table: QueryTable,
     pub union_type: UnionType,
 }
+
+/// Types of SQL unions.
 #[derive(Clone, Debug)]
 pub enum UnionType {
     Union,
     UnionAll,
 }
+
+/// Column representation in a query.
 #[derive(Clone, Debug)]
 pub enum RdbcColumn {
     TableColumn(TableColumn),
@@ -92,17 +102,22 @@ pub enum RdbcColumn {
     ValueColumn(ValueColumn),
 }
 
+/// Table column representation.
 #[derive(Clone, Debug)]
 pub struct TableColumn {
     pub table: Option<RdbcTable>,
     pub column_name: String,
     pub column_alias: String,
 }
+
+/// Subquery column representation.
 #[derive(Clone, Debug)]
 pub struct QueryColumn {
     pub query: RdbcQueryWrapper,
     pub column_alias: String,
 }
+
+/// Function column representation.
 #[derive(Clone, Debug)]
 pub struct FuncColumn {
     pub columns: Vec<RdbcColumn>,
@@ -110,11 +125,15 @@ pub struct FuncColumn {
     pub separator: String,
     pub column_alias: String,
 }
+
+/// Value column representation.
 #[derive(Clone, Debug)]
 pub struct ValueColumn {
     pub value: RdbcValue,
     pub column_alias: String,
 }
+
+/// Supported SQL functions.
 #[derive(Clone, Debug)]
 pub enum RdbcFunc {
     Count,
@@ -142,57 +161,29 @@ pub enum RdbcFunc {
     Pow,
     Round,
 }
+
+/// SQL query conditions.
 #[derive(Clone, Debug)]
 pub struct RdbcCondition {
-    pub(crate) kind: ConditionKind,
-    pub(crate) column: Vec<ConditionColumn>,
+    pub kind: ConditionKind,
+    pub column: Vec<ConditionColumn>,
 }
 
-impl RdbcCondition {
-    pub(crate) fn new() -> RdbcCondition {
-        RdbcCondition {
-            kind: ConditionKind::AND,
-            column: vec![],
-        }
-    }
-    pub(crate) fn eq_v<T, V>(&mut self, column: T, value: V) -> &mut Self
-    where
-        RdbcColumn: From<T>,
-        RdbcValue: From<V>,
-    {
-        self.column.push(ConditionColumn::Compare(CompareColumn {
-            column: RdbcColumn::from(column),
-            kind: CompareKind::Equal,
-            value: RdbcColumnValue::StaticValue(RdbcValue::from(value)),
-            ignore_null: false,
-        }));
-        self
-    }
-    pub(crate) fn like<C, V>(&mut self, column: C, value: V) -> &mut Self
-    where
-        RdbcColumn: From<C>,
-        RdbcValue: From<V>,
-    {
-        self.column.push(ConditionColumn::Compare(CompareColumn {
-            column: RdbcColumn::from(column),
-            kind: CompareKind::Like(CompareLikeKind::Both),
-            value: RdbcColumnValue::StaticValue(RdbcValue::from(value)),
-            ignore_null: false,
-        }));
-        self
-    }
-}
-
-#[derive(Clone, Debug)]
-pub enum ConditionColumn {
-    Compare(CompareColumn),
-    SubCondition(RdbcCondition),
-}
+/// Types of conditions.
 #[derive(Clone, Debug)]
 pub enum ConditionKind {
     AND,
     OR,
 }
+
+/// Representation of a condition column.
+#[derive(Clone, Debug)]
+pub enum ConditionColumn {
+    Compare(CompareColumn),
+    SubCondition(RdbcCondition),
+}
+
+/// Comparison column structure.
 #[derive(Clone, Debug)]
 pub struct CompareColumn {
     pub column: RdbcColumn,
@@ -201,14 +192,15 @@ pub struct CompareColumn {
     pub ignore_null: bool,
 }
 
+/// Types of SQL comparisons.
 #[derive(Clone, Debug)]
 pub enum CompareKind {
     Equal,
     NotEqual,
     GreaterThan,
-    GreaterThanOrEqual,
+    GreaterEqualThan,
     LessThan,
-    LessThanOrEqual,
+    LessEqualThan,
     Like(CompareLikeKind),
     NotLike(CompareLikeKind),
     Between,
@@ -220,12 +212,16 @@ pub enum CompareKind {
     Exists,
     NotExists,
 }
+
+/// Types of LIKE conditions.
 #[derive(Clone, Debug)]
 pub enum CompareLikeKind {
     Left,
     Right,
     Both,
 }
+
+/// Possible column values in conditions.
 #[derive(Debug, Clone)]
 pub enum RdbcColumnValue {
     ColumnValue(RdbcColumn),
@@ -234,34 +230,14 @@ pub enum RdbcColumnValue {
     NullValue,
 }
 
-impl From<RdbcValue> for RdbcColumnValue {
-    fn from(value: RdbcValue) -> Self {
-        RdbcColumnValue::StaticValue(value)
-    }
-}
-
-impl From<RdbcColumn> for RdbcColumnValue {
-    fn from(value: RdbcColumn) -> Self {
-        RdbcColumnValue::ColumnValue(value)
-    }
-}
-
-impl From<String> for RdbcColumnValue {
-    fn from(value: String) -> Self {
-        RdbcColumnValue::ScriptValue(value)
-    }
-}
-impl From<&str> for RdbcColumnValue {
-    fn from(value: &str) -> Self {
-        RdbcColumnValue::ScriptValue(value.to_string())
-    }
-}
-
+/// Order by clause structure.
 #[derive(Debug, Clone)]
 pub struct RdbcOrder {
     pub column: Vec<RdbcColumn>,
     pub order_type: OrderType,
 }
+
+/// Types of order directions.
 #[derive(Debug, Clone)]
 pub enum OrderType {
     Asc,
