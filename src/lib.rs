@@ -1,5 +1,6 @@
 mod build;
 mod db;
+mod model;
 mod render;
 mod value;
 mod wrapper;

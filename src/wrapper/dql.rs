@@ -229,6 +229,29 @@ pub enum CompareLikeKind {
     Both,
 }
 
+impl CompareKind {
+    pub fn compare(&self) -> String {
+        match self {
+            CompareKind::Equal => "=".to_string(),
+            CompareKind::NotEqual => "!=".to_string(),
+            CompareKind::GreaterThan => ">".to_string(),
+            CompareKind::GreaterEqualThan => ">=".to_string(),
+            CompareKind::LessThan => "<".to_string(),
+            CompareKind::LessEqualThan => "<=".to_string(),
+            CompareKind::Like(_) => "LIKE".to_string(),
+            CompareKind::NotLike(_) => "NOT LIKE".to_string(),
+            CompareKind::Between => "BETWEEN".to_string(),
+            CompareKind::NotBetween => "NOT BETWEEN".to_string(),
+            CompareKind::In => "IN".to_string(),
+            CompareKind::NotIn => "NOT IN".to_string(),
+            CompareKind::IsNull => "IS NULL".to_string(),
+            CompareKind::IsNotNull => "IS NOT NULL".to_string(),
+            CompareKind::Exists => "EXISTS".to_string(),
+            CompareKind::NotExists => "NOT EXISTS".to_string(),
+        }
+    }
+}
+
 /// Possible column values in conditions.
 #[derive(Debug, Clone)]
 pub enum RdbcColumnValue {

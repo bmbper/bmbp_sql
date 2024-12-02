@@ -1,14 +1,14 @@
 use crate::render::client::util::extract_map_params;
 use crate::render::render::RdbcSQLRender;
 use crate::{
-    CompareColumn, CompareKind, ConditionColumn, ConditionKind, FuncColumn, JoinTable, JoinType,
-    QueryColumn, QueryTable, RdbcColumn, RdbcColumnValue, RdbcCondition, RdbcDeleteWrapper,
-    RdbcFunc, RdbcInsertWrapper, RdbcOrder, RdbcQueryWrapper, RdbcTable, RdbcTableIdent,
-    RdbcUpdateWrapper, RdbcValue, SQLTable, SchemaTable, TableColumn, UnionTable, UnionType,
-    ValueColumn,
+    CompareColumn, CompareKind, CompareLikeKind, ConditionColumn, ConditionKind, FuncColumn,
+    JoinTable, JoinType, QueryColumn, QueryTable, RdbcColumn, RdbcColumnValue, RdbcCondition,
+    RdbcDeleteWrapper, RdbcFunc, RdbcInsertWrapper, RdbcOrder, RdbcQueryWrapper, RdbcTable,
+    RdbcTableIdent, RdbcUpdateWrapper, RdbcValue, SQLTable, SchemaTable, TableColumn, UnionTable,
+    UnionType, ValueColumn,
 };
 use serde_json;
-use serde_json::to_string;
+use std::cmp::PartialEq;
 use std::collections::HashMap;
 
 pub struct PgSQLRender {}
@@ -176,6 +176,13 @@ impl RdbcSQLRender for PgSQLRender {
         ("".to_string(), HashMap::new())
     }
 }
+
+impl PartialEq for CompareKind {
+    fn eq(&self, other: &Self) -> bool {
+        self.compare() == other.compare()
+    }
+}
+
 impl PgSQLRender {
     fn convert_script_to_sql(
         mut sql: String,
@@ -184,7 +191,10 @@ impl PgSQLRender {
         let mut params_vec = vec![];
         for (k, v) in params_map.iter() {
             if sql.contains(k) {
-                sql = sql.replace(k, params_vec.len().to_string().as_str());
+                sql = sql.replace(
+                    format!("#{{{}}}", k).as_str(),
+                    params_vec.len().to_string().as_str(),
+                );
                 params_vec.push(v.clone());
             }
         }
@@ -196,131 +206,11 @@ impl PgSQLRender {
         let mut params_map = HashMap::new();
         let mut select_vec = vec![];
         for column in select_columns {
-            let (item_sql, item_params) = match column {
-                RdbcColumn::TableColumn(c) => Self::render_select_table_column(c),
-                RdbcColumn::QueryColumn(c) => Self::render_select_query_column(c),
-                RdbcColumn::FuncColumn(c) => Self::render_select_func_column(c),
-                RdbcColumn::ValueColumn(c) => Self::render_select_value_column(c),
-            };
+            let (item_sql, item_params) = Self::render_column_for_select(column);
             select_vec.push(item_sql);
             params_map.extend(item_params);
         }
         (select_vec.join(","), params_map)
-    }
-
-    fn render_select_table_column(column: &TableColumn) -> (String, HashMap<String, RdbcValue>) {
-        let mut column_sql = column.column_name.to_string();
-        if !column.column_alias.is_empty() {
-            column_sql = format!("{} AS {}", column_sql, column.column_alias);
-        }
-        if let Some(table) = column.table.as_ref() {
-            let table_alias = table.table_alias();
-            if !table_alias.is_empty() {
-                column_sql = format!("{}.{}", table_alias, column_sql);
-            }
-        }
-        return (column_sql.to_string(), HashMap::new());
-    }
-    fn render_select_query_column(column: &QueryColumn) -> (String, HashMap<String, RdbcValue>) {
-        let (mut column_sql, mut params_map) = Self::render_query_script(&column.query);
-        if !column.column_alias.is_empty() {
-            column_sql = format!("{} AS {}", column_sql, column.column_alias);
-        }
-        return (column_sql, params_map);
-    }
-    fn render_select_func_column(column: &FuncColumn) -> (String, HashMap<String, RdbcValue>) {
-        let (mut column_sql, mut params_map) = Self::render_func_column(column);
-        if !column.column_alias.is_empty() {
-            column_sql = format!("{} AS {}", column_sql, column.column_alias);
-        }
-        return (column_sql, params_map);
-    }
-    fn render_func_column(column: &FuncColumn) -> (String, HashMap<String, RdbcValue>) {
-        match &column.func_type {
-            RdbcFunc::Count => {}
-            RdbcFunc::Sum => {}
-            RdbcFunc::Avg => {}
-            RdbcFunc::Max => {}
-            RdbcFunc::Min => {}
-            RdbcFunc::SubStr => {}
-            RdbcFunc::Trim => {}
-            RdbcFunc::Length => {}
-            RdbcFunc::Upper => {}
-            RdbcFunc::Lower => {}
-            RdbcFunc::Date => {}
-            RdbcFunc::Abs => {}
-            RdbcFunc::Floor => {}
-            RdbcFunc::Concat => {}
-            RdbcFunc::DateDiff => {}
-            RdbcFunc::DateAdd => {}
-            RdbcFunc::DateSub => {}
-            RdbcFunc::Add => {}
-            RdbcFunc::Sub => {}
-            RdbcFunc::Mul => {}
-            RdbcFunc::Div => {}
-            RdbcFunc::Mod => {}
-            RdbcFunc::Pow => {}
-            RdbcFunc::Round => {}
-        }
-        ("".to_string(), HashMap::new())
-    }
-    fn render_select_value_column(column: &ValueColumn) -> (String, HashMap<String, RdbcValue>) {
-        let mut column_sql = match &column.value {
-            RdbcValue::Char(c) => {
-                format!("'{}'", c)
-            }
-            RdbcValue::Varchar(v) => {
-                format!("'{}'", v)
-            }
-            RdbcValue::Text(v) => {
-                format!("'{}'", v)
-            }
-            RdbcValue::LongText(v) => {
-                format!("'{}'", v)
-            }
-            RdbcValue::SmallInt(v) => {
-                format!("{}", v)
-            }
-            RdbcValue::Int(v) => {
-                format!("{}", v)
-            }
-            RdbcValue::BigInt(v) => {
-                format!("{}", v)
-            }
-            RdbcValue::Double(v) => {
-                format!("{}", v)
-            }
-            RdbcValue::BigDouble(v) => {
-                format!("{}", v)
-            }
-            RdbcValue::Date(v) => {
-                format!("'{}'", v.format("%Y-%m-%d"))
-            }
-            RdbcValue::DateTime(v) => {
-                format!("'{}'", v.format("%Y-%m-%d %H:%M:%S"))
-            }
-            RdbcValue::Time(t) => {
-                format!("'{}'", t.format("%H:%M:%S"))
-            }
-            RdbcValue::TimeStamp(v) => {
-                format!("{}", v)
-            }
-            RdbcValue::Bytes(v) => String::from_utf8(v.to_vec()).unwrap_or("".to_string()),
-            RdbcValue::Boolean(v) => {
-                if *v {
-                    "true".to_string()
-                } else {
-                    "false".to_string()
-                }
-            }
-            RdbcValue::Array(v) => serde_json::to_string(v).unwrap_or("".to_string()),
-            RdbcValue::Object(v) => serde_json::to_string(v).unwrap_or("".to_string()),
-            RdbcValue::Null => "NULL".to_string(),
-        };
-        if !column.column_alias.is_empty() {
-            column_sql = format!("{} AS {}", column_sql, column.column_alias);
-        }
-        return (column_sql.to_string(), HashMap::new());
     }
 
     fn render_table_slice(table_slice: &[RdbcTable]) -> (String, HashMap<String, RdbcValue>) {
@@ -384,13 +274,238 @@ impl PgSQLRender {
                     (format!("({})", temp_sql), temp_params)
                 }
             };
-            condition_vec.push(column_sql);
-            condition_params.extend(column_params);
+            if !column_sql.is_empty() {
+                condition_vec.push(column_sql);
+                condition_params.extend(column_params);
+            }
         }
         (condition_vec.join(&*split_tag), condition_params)
     }
     fn render_compare_column(column: &CompareColumn) -> (String, HashMap<String, RdbcValue>) {
+        let mut params = HashMap::new();
+        let (mut column_sql, mut column_params) = Self::render_column_for_compare(&column.column);
+        params.extend(column_params);
+        if column.kind == CompareKind::IsNotNull || column.kind == CompareKind::IsNull {
+            column_sql = format!("{} {}", column_sql, column.kind.compare());
+            return (column_sql, params);
+        }
+        match &column.value {
+            RdbcColumnValue::ColumnValue(c) => {
+                let (value_sql, value_params) = Self::render_column_for_compare(c);
+                column_sql = format!("{} {} {}", column_sql, column.kind.compare(), value_sql);
+                params.extend(value_params);
+            }
+            RdbcColumnValue::StaticValue(v) => match &column.kind {
+                CompareKind::Like(like) | CompareKind::NotLike(like) => {
+                    let value_id = uuid::Uuid::new_v4().to_string();
+                    column_sql =
+                        format!("{} {} #{{{}}}", column_sql, column.kind.compare(), value_id);
+                    let like_value = match like {
+                        CompareLikeKind::Left => format!("%'{}'", v.to_string()),
+                        CompareLikeKind::Right => format!("'{}'%", v.to_string()),
+                        CompareLikeKind::Both => format!("%'{}'%", v.to_string()),
+                    };
+                    params.insert(value_id, RdbcValue::from(like_value));
+                }
+                CompareKind::Between | CompareKind::NotBetween => {
+                    if v.is_array() {
+                        let array_value = v.as_array().unwrap();
+                        if array_value.len() >= 2 {
+                            let start_id = uuid::Uuid::new_v4().to_string();
+                            let end_id = uuid::Uuid::new_v4().to_string();
+                            column_sql = format!(
+                                "{} {} #{{{}}} AND #{{{}}}",
+                                column_sql,
+                                column.kind.compare(),
+                                start_id,
+                                end_id
+                            );
+                            params.insert(start_id, array_value[0].clone());
+                            params.insert(end_id, array_value[1].clone());
+                        } else {
+                            column_sql = format!(
+                                "{} {} {}",
+                                column_sql,
+                                column.kind.compare(),
+                                "请以Vec的形式，传递两个参数"
+                            )
+                        }
+                    } else {
+                        column_sql = format!(
+                            "{} {} {}",
+                            column_sql,
+                            column.kind.compare(),
+                            "请以Vec的形式，传递两个参数"
+                        )
+                    }
+                }
+                _ => {
+                    let value_id = uuid::Uuid::new_v4().to_string();
+                    column_sql =
+                        format!("{} {} #{{{}}}", column_sql, column.kind.compare(), value_id);
+                    params.insert(value_id, v.clone());
+                }
+            },
+            RdbcColumnValue::ScriptValue(v) => {
+                column_sql = format!("{} {} {} ", column_sql, column.kind.compare(), v);
+            }
+            RdbcColumnValue::NullValue => {
+                if column.ignore_null {
+                    column_sql = format!("{} {} NULL", column_sql, column.kind.compare());
+                } else {
+                    column_sql = "".to_string();
+                }
+            }
+        };
+        (column_sql, params)
+    }
+    fn render_column_for_select(column: &RdbcColumn) -> (String, HashMap<String, RdbcValue>) {
+        match column {
+            RdbcColumn::TableColumn(c) => Self::render_table_column_with_alias(c, true),
+            RdbcColumn::QueryColumn(c) => Self::render_query_column_with_alias(c, true),
+            RdbcColumn::FuncColumn(c) => Self::render_func_column_with_alias(c, true),
+            RdbcColumn::ValueColumn(c) => Self::render_value_column_with_alias(c, true),
+        }
+    }
+    fn render_column_for_compare(column: &RdbcColumn) -> (String, HashMap<String, RdbcValue>) {
+        match column {
+            RdbcColumn::TableColumn(c) => Self::render_table_column_with_alias(c, false),
+            RdbcColumn::QueryColumn(c) => Self::render_query_column_with_alias(c, false),
+            RdbcColumn::FuncColumn(c) => Self::render_func_column_with_alias(c, false),
+            RdbcColumn::ValueColumn(c) => Self::render_value_column_with_alias(c, false),
+        }
+    }
+
+    fn render_func_column(column: &FuncColumn) -> (String, HashMap<String, RdbcValue>) {
+        match &column.func_type {
+            RdbcFunc::Count => {}
+            RdbcFunc::Sum => {}
+            RdbcFunc::Avg => {}
+            RdbcFunc::Max => {}
+            RdbcFunc::Min => {}
+            RdbcFunc::SubStr => {}
+            RdbcFunc::Trim => {}
+            RdbcFunc::Length => {}
+            RdbcFunc::Upper => {}
+            RdbcFunc::Lower => {}
+            RdbcFunc::Date => {}
+            RdbcFunc::Abs => {}
+            RdbcFunc::Floor => {}
+            RdbcFunc::Concat => {}
+            RdbcFunc::DateDiff => {}
+            RdbcFunc::DateAdd => {}
+            RdbcFunc::DateSub => {}
+            RdbcFunc::Add => {}
+            RdbcFunc::Sub => {}
+            RdbcFunc::Mul => {}
+            RdbcFunc::Div => {}
+            RdbcFunc::Mod => {}
+            RdbcFunc::Pow => {}
+            RdbcFunc::Round => {}
+        }
         ("".to_string(), HashMap::new())
+    }
+
+    fn render_table_column_with_alias(
+        column: &TableColumn,
+        has_alias: bool,
+    ) -> (String, HashMap<String, RdbcValue>) {
+        let mut column_sql = column.column_name.to_string();
+        if !column.column_alias.is_empty() && has_alias {
+            column_sql = format!("{} AS {}", column_sql, column.column_alias);
+        }
+        if let Some(table) = column.table.as_ref() {
+            let table_alias = table.table_alias();
+            if !table_alias.is_empty() {
+                column_sql = format!("{}.{}", table_alias, column_sql);
+            }
+        }
+        return (column_sql.to_string(), HashMap::new());
+    }
+    fn render_query_column_with_alias(
+        column: &QueryColumn,
+        has_alias: bool,
+    ) -> (String, HashMap<String, RdbcValue>) {
+        let (mut column_sql, mut params_map) = Self::render_query_script(&column.query);
+        if !column.column_alias.is_empty() && has_alias {
+            column_sql = format!("{} AS {}", column_sql, column.column_alias);
+        }
+        return (column_sql, params_map);
+    }
+    fn render_func_column_with_alias(
+        column: &FuncColumn,
+        has_alias: bool,
+    ) -> (String, HashMap<String, RdbcValue>) {
+        let (mut column_sql, mut params_map) = Self::render_func_column(column);
+        if !column.column_alias.is_empty() && has_alias {
+            column_sql = format!("{} AS {}", column_sql, column.column_alias);
+        }
+        return (column_sql, params_map);
+    }
+    fn render_value_column_with_alias(
+        column: &ValueColumn,
+        has_alias: bool,
+    ) -> (String, HashMap<String, RdbcValue>) {
+        let mut column_sql = Self::render_rdbc_value(&column.value);
+        if !column.column_alias.is_empty() && has_alias {
+            column_sql = format!("{} AS {}", column_sql, column.column_alias);
+        }
+        return (column_sql.to_string(), HashMap::new());
+    }
+
+    fn render_rdbc_value(value: &RdbcValue) -> String {
+        match value {
+            RdbcValue::Char(c) => {
+                format!("'{}'", c)
+            }
+            RdbcValue::Varchar(v) => {
+                format!("'{}'", v)
+            }
+            RdbcValue::Text(v) => {
+                format!("'{}'", v)
+            }
+            RdbcValue::LongText(v) => {
+                format!("'{}'", v)
+            }
+            RdbcValue::SmallInt(v) => {
+                format!("{}", v)
+            }
+            RdbcValue::Int(v) => {
+                format!("{}", v)
+            }
+            RdbcValue::BigInt(v) => {
+                format!("{}", v)
+            }
+            RdbcValue::Double(v) => {
+                format!("{}", v)
+            }
+            RdbcValue::BigDouble(v) => {
+                format!("{}", v)
+            }
+            RdbcValue::Date(v) => {
+                format!("'{}'", v.format("%Y-%m-%d"))
+            }
+            RdbcValue::DateTime(v) => {
+                format!("'{}'", v.format("%Y-%m-%d %H:%M:%S"))
+            }
+            RdbcValue::Time(t) => {
+                format!("'{}'", t.format("%H:%M:%S"))
+            }
+            RdbcValue::TimeStamp(v) => {
+                format!("{}", v)
+            }
+            RdbcValue::Bytes(v) => String::from_utf8(v.to_vec()).unwrap_or("".to_string()),
+            RdbcValue::Boolean(v) => {
+                if v == &true {
+                    "true".to_string()
+                } else {
+                    "false".to_string()
+                }
+            }
+            RdbcValue::Array(v) => serde_json::to_string(&v).unwrap_or("".to_string()),
+            RdbcValue::Object(v) => serde_json::to_string(&v).unwrap_or("".to_string()),
+            RdbcValue::Null => "NULL".to_string(),
+        }
     }
     fn render_group_columns(columns: &[RdbcColumn]) -> (String, HashMap<String, RdbcValue>) {
         ("".to_string(), HashMap::new())

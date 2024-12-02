@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fmt::Display;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum RdbcValue {
@@ -96,6 +97,38 @@ impl RdbcValue {
             RdbcValue::Array(v) => Some(v),
             _ => None,
         }
+    }
+}
+
+impl Display for RdbcValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let str = match self {
+            RdbcValue::Char(v) => v.to_string(),
+            RdbcValue::Varchar(v) => v.to_string(),
+            RdbcValue::Text(v) => v.to_string(),
+            RdbcValue::LongText(v) => v.to_string(),
+            RdbcValue::SmallInt(v) => v.to_string(),
+            RdbcValue::Int(v) => v.to_string(),
+            RdbcValue::BigInt(v) => v.to_string(),
+            RdbcValue::Double(v) => v.to_string(),
+            RdbcValue::BigDouble(v) => v.to_string(),
+            RdbcValue::Date(v) => v.to_string(),
+            RdbcValue::DateTime(v) => v.to_string(),
+            RdbcValue::Time(v) => v.to_string(),
+            RdbcValue::TimeStamp(v) => v.to_string(),
+            RdbcValue::Bytes(v) => String::from_utf8(v.to_vec()).unwrap_or("".to_string()),
+            RdbcValue::Boolean(v) => v.to_string(),
+            RdbcValue::Array(v) => match serde_json::to_string(v) {
+                Ok(v_s) => v_s.clone(),
+                Err(e) => e.to_string(),
+            },
+            RdbcValue::Object(v) => match serde_json::to_string(v) {
+                Ok(v_s) => v_s.clone(),
+                Err(e) => e.to_string(),
+            },
+            RdbcValue::Null => "NULL".to_string(),
+        };
+        write!(f, "{}", str)
     }
 }
 
