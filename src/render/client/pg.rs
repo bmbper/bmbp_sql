@@ -4,9 +4,9 @@ use crate::{
     CompareColumn, CompareKind, CompareLikeKind, ConditionColumn, ConditionKind, FuncColumn,
     JoinTable, JoinType, QueryColumn, QueryTable, RdbcColumn, RdbcColumnValue, RdbcCondition,
     RdbcDeleteWrapper, RdbcFunc, RdbcInsertWrapper, RdbcOrder, RdbcQueryWrapper, RdbcTable,
-    RdbcTableIdent, RdbcUpdateWrapper, RdbcValue, SQLTable, SchemaTable, TableColumn, UnionTable,
-    UnionType, ValueColumn,
+    RdbcUpdateWrapper, SQLTable, SchemaTable, TableColumn, UnionTable, UnionType, ValueColumn,
 };
+use bmbp_rdbc_type::RdbcValue;
 use serde_json;
 use std::cmp::PartialEq;
 use std::collections::HashMap;
@@ -193,7 +193,7 @@ impl PgSQLRender {
             if sql.contains(k) {
                 sql = sql.replace(
                     format!("#{{{}}}", k).as_str(),
-                    params_vec.len().to_string().as_str(),
+                    format!("${}", params_vec.len() + 1).as_str(),
                 );
                 params_vec.push(v.clone());
             }
@@ -218,10 +218,13 @@ impl PgSQLRender {
         let mut table_params = HashMap::new();
         for item in table_slice {
             let (item_sql, item_params) = Self::render_table(item);
+            if item_sql.is_empty() {
+                continue;
+            }
             table_vec.push(item_sql);
             table_params.extend(item_params);
         }
-        ("".to_string(), HashMap::new())
+        (table_vec.join(","), table_params)
     }
     fn render_table(table: &RdbcTable) -> (String, HashMap<String, RdbcValue>) {
         match table {
@@ -298,14 +301,23 @@ impl PgSQLRender {
             RdbcColumnValue::StaticValue(v) => match &column.kind {
                 CompareKind::Like(like) | CompareKind::NotLike(like) => {
                     let value_id = uuid::Uuid::new_v4().to_string();
-                    column_sql =
-                        format!("{} {} #{{{}}}", column_sql, column.kind.compare(), value_id);
-                    let like_value = match like {
-                        CompareLikeKind::Left => format!("%'{}'", v.to_string()),
-                        CompareLikeKind::Right => format!("'{}'%", v.to_string()),
-                        CompareLikeKind::Both => format!("%'{}'%", v.to_string()),
-                    };
-                    params.insert(value_id, RdbcValue::from(like_value));
+                    match like {
+                        CompareLikeKind::Left => {
+                            column_sql =
+                                format!("{} LIKE CONCAT(#{{{}}}::text,'%')", column_sql, value_id);
+                        }
+                        CompareLikeKind::Right => {
+                            column_sql =
+                                format!("{} LIKE CONCAT('%',#{{{}}}::text)", column_sql, value_id);
+                        }
+                        CompareLikeKind::Both => {
+                            column_sql = format!(
+                                "{} LIKE CONCAT('%',#{{{}}}::text,'%')",
+                                column_sql, value_id
+                            );
+                        }
+                    }
+                    params.insert(value_id, v.clone());
                 }
                 CompareKind::Between | CompareKind::NotBetween => {
                     if v.is_array() {

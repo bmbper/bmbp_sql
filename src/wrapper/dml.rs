@@ -1,5 +1,6 @@
 use crate::wrapper::dql::{QueryTable, RdbcColumn, RdbcColumnValue, RdbcCondition, RdbcTable};
-use crate::{JoinTable, RdbcOrder, RdbcValue, UnionTable};
+use crate::{JoinTable, RdbcOrder, UnionTable};
+use bmbp_rdbc_type::RdbcValue;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]

@@ -1,8 +1,9 @@
 use crate::wrapper::{RdbcColumn, RdbcQueryWrapper, RdbcTable};
 use crate::{
     CompareColumn, CompareKind, CompareLikeKind, ConditionColumn, ConditionKind, JoinTable,
-    RdbcColumnValue, RdbcCondition, RdbcValue,
+    RdbcColumnValue, RdbcCondition,
 };
+use bmbp_rdbc_type::{RdbcIdent, RdbcTableIdent, RdbcValue};
 use std::collections::HashMap;
 
 impl RdbcQueryWrapper {
@@ -22,26 +23,15 @@ impl RdbcQueryWrapper {
         }
     }
 
-    pub fn with_table<T>(table: T) -> Self
+    pub fn with_table<T>() -> Self
     where
-        RdbcTable: From<T>,
+        T: RdbcTableIdent,
     {
         let mut query = Self::new();
-        query.from(table);
+        query.from(T::get_table().get_ident());
+        query.select_columns(T::get_columns());
         query
     }
-
-    /// Initializes the query with a table and a list of columns.
-    pub fn with_table_columns<T, C>(table: T, columns: impl IntoIterator<Item = C>) -> Self
-    where
-        RdbcTable: From<T>,
-        RdbcColumn: From<C>,
-    {
-        let mut query = Self::with_table(table);
-        query.select_columns(columns);
-        query
-    }
-
     pub fn with_columns<C>(columns: impl IntoIterator<Item = C>) -> Self
     where
         RdbcColumn: From<C>,

@@ -1,4 +1,4 @@
-use crate::RdbcValue;
+use bmbp_rdbc_type::RdbcValue;
 use std::collections::HashMap;
 
 pub fn extract_map_params(params: &HashMap<String, RdbcValue>) -> HashMap<String, RdbcValue> {
