@@ -1,4 +1,4 @@
-use bmbp_rdbc_type::{RdbcIdent, RdbcValue};
+use crate::{RdbcColumnIdent, RdbcTableIdent, RdbcValue};
 use std::collections::HashMap;
 
 /// Query wrapper to construct complex SQL queries.
@@ -277,12 +277,12 @@ pub enum OrderType {
 
 impl<T> From<T> for RdbcTable
 where
-    T: RdbcIdent,
+    T: ToString,
 {
-    fn from(value: T) -> Self {
+    fn from(t: T) -> Self {
         RdbcTable::SchemaTable(SchemaTable {
             schema: "".to_string(),
-            table_name: value.get_ident(),
+            table_name: t.to_string(),
             table_alias: "".to_string(),
         })
     }
@@ -290,12 +290,12 @@ where
 
 impl<T> From<T> for RdbcColumn
 where
-    T: RdbcIdent,
+    T: RdbcColumnIdent,
 {
     fn from(value: T) -> Self {
         RdbcColumn::TableColumn(TableColumn {
             table: None,
-            column_name: value.get_ident(),
+            column_name: value.name(),
             column_alias: "".to_string(),
         })
     }

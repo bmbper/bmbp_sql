@@ -4,9 +4,10 @@ use crate::{
     CompareColumn, CompareKind, CompareLikeKind, ConditionColumn, ConditionKind, FuncColumn,
     JoinTable, JoinType, QueryColumn, QueryTable, RdbcColumn, RdbcColumnValue, RdbcCondition,
     RdbcDeleteWrapper, RdbcFunc, RdbcInsertWrapper, RdbcOrder, RdbcQueryWrapper, RdbcTable,
-    RdbcUpdateWrapper, SQLTable, SchemaTable, TableColumn, UnionTable, UnionType, ValueColumn,
+    RdbcUpdateWrapper, RdbcValue, SQLTable, SchemaTable, TableColumn, UnionTable, UnionType,
+    ValueColumn,
 };
-use bmbp_rdbc_type::RdbcValue;
+
 use serde_json;
 use std::cmp::PartialEq;
 use std::collections::HashMap;

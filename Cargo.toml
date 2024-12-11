@@ -11,4 +11,3 @@ serde = { version = "1.0.215", features = ["derive", ] }
 serde_json = { version = "1.0.132", features = ["default"] }
 tokio-postgres = "0.7.12"
 uuid = { version = "1.11.0", features = ["v4"] }
-bmbp_rdbc_type = { workspace = true }

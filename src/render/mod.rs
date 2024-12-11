@@ -1,8 +1,7 @@
 use crate::db::DataBase;
 use crate::render::client::{MysqlSQLRender, SqliteSQLRender};
 use crate::render::render::RdbcSQLRender;
-use crate::RdbcQueryWrapper;
-use bmbp_rdbc_type::RdbcValue;
+use crate::{RdbcQueryWrapper, RdbcValue};
 
 mod client;
 mod render;
