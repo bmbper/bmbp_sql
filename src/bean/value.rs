@@ -110,11 +110,11 @@ impl RdbcValue {
     }
     pub fn as_number(&self) -> Option<u64> {
         match self {
-            RdbcValue::SmallInt(v) => Some(*v as u64),
-            RdbcValue::Int(v) => Some(*v as u64),
-            RdbcValue::BigInt(v) => Some(*v as u64),
-            RdbcValue::Double(v) => Some(*v as u64),
-            RdbcValue::BigDouble(v) => Some(*v as u64),
+            RdbcValue::SmallInt(v) => Some(v.clone() as u64),
+            RdbcValue::Int(v) => Some(v.clone() as u64),
+            RdbcValue::BigInt(v) => Some(v.clone() as u64),
+            RdbcValue::Double(v) => Some(v.clone() as u64),
+            RdbcValue::BigDouble(v) => Some(v.clone() as u64),
             _ => None,
         }
     }
