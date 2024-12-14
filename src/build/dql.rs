@@ -102,14 +102,13 @@ impl RdbcQueryWrapper {
         self.get_or_create_where_condition().like(column, value);
         self
     }
-    pub fn like_if<C, V>(&mut self, column: C, value: V, condition: bool) -> &mut Self
+
+    pub fn eq<C, V>(&mut self, column: C, value: V) -> &mut Self
     where
         RdbcColumn: From<C>,
         RdbcValue: From<V>,
     {
-        if condition {
-            self.like(column, value);
-        }
+        self.get_or_create_where_condition().eq(column, value);
         self
     }
     pub fn like_op<C, V>(&mut self, column: C, value: Option<V>) -> &mut Self
