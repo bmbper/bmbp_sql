@@ -1,5 +1,5 @@
 use crate::wrapper::dql::{QueryTable, RdbcColumn, RdbcColumnValue, RdbcCondition, RdbcTable};
-use crate::{JoinTable, RdbcOrder, RdbcValue, UnionTable};
+use crate::{JoinTable, RdbcOrder, RdbcTableIdent, RdbcValue, UnionTable};
 
 use std::collections::HashMap;
 
@@ -12,7 +12,7 @@ pub struct RdbcInsertWrapper {
     column_query: Option<QueryTable>,
     params: HashMap<String, RdbcValue>,
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct RdbcUpdateWrapper {
     pub column_dml: Vec<DmlColumn>,
     pub from_table: Vec<RdbcTable>,
@@ -26,6 +26,7 @@ pub struct RdbcUpdateWrapper {
     pub(crate) offset_count: Option<u64>,
     pub(crate) params: HashMap<String, RdbcValue>,
 }
+
 #[derive(Debug, Clone)]
 pub struct RdbcDeleteWrapper {
     pub from_table: Vec<RdbcTable>,
@@ -43,4 +44,17 @@ pub struct RdbcDeleteWrapper {
 pub struct DmlColumn {
     column: RdbcColumn,
     value: RdbcColumnValue,
+}
+
+impl DmlColumn {
+    pub fn new<C, V>(column: C, value: V) -> Self
+    where
+        RdbcColumn: From<C>,
+        RdbcColumnValue: From<V>,
+    {
+        DmlColumn {
+            column: RdbcColumn::from(column),
+            value: RdbcColumnValue::from(value),
+        }
+    }
 }

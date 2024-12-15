@@ -300,3 +300,12 @@ where
         })
     }
 }
+
+impl<T> From<T> for RdbcColumnValue
+where
+    RdbcValue: From<T>,
+{
+    fn from(value: T) -> Self {
+        RdbcColumnValue::StaticValue(RdbcValue::from(value))
+    }
+}
