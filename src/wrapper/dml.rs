@@ -5,12 +5,12 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct RdbcInsertWrapper {
-    table: RdbcTable,
-    column_dml: Vec<DmlColumn>,
-    columns: Vec<RdbcColumn>,
-    column_value: Vec<RdbcColumnValue>,
-    column_query: Option<QueryTable>,
-    params: HashMap<String, RdbcValue>,
+    pub table: RdbcTable,
+    pub column_dml: Vec<DmlColumn>,
+    pub columns: Vec<RdbcColumn>,
+    pub column_value: Vec<RdbcColumnValue>,
+    pub column_query: Option<QueryTable>,
+    pub params: HashMap<String, RdbcValue>,
 }
 #[derive(Debug, Clone, Default)]
 pub struct RdbcUpdateWrapper {
@@ -42,8 +42,8 @@ pub struct RdbcDeleteWrapper {
 }
 #[derive(Debug, Clone)]
 pub struct DmlColumn {
-    column: RdbcColumn,
-    value: RdbcColumnValue,
+    pub column: RdbcColumn,
+    pub value: RdbcColumnValue,
 }
 
 impl DmlColumn {

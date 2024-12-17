@@ -1,14 +1,15 @@
 use crate::render::client::util::extract_map_params;
 use crate::render::render::RdbcSQLRender;
 use crate::{
-    CompareColumn, CompareKind, CompareLikeKind, ConditionColumn, ConditionKind, FuncColumn,
-    JoinTable, JoinType, QueryColumn, QueryTable, RdbcColumn, RdbcColumnValue, RdbcCondition,
-    RdbcDeleteWrapper, RdbcFunc, RdbcInsertWrapper, RdbcOrder, RdbcQueryWrapper, RdbcTable,
-    RdbcUpdateWrapper, RdbcValue, SQLTable, SchemaTable, TableColumn, UnionTable, UnionType,
-    ValueColumn,
+    CompareColumn, CompareKind, CompareLikeKind, ConditionColumn, ConditionKind, DmlColumn,
+    FuncColumn, JoinTable, JoinType, OrderType, QueryColumn, QueryTable, RdbcColumn,
+    RdbcColumnValue, RdbcCondition, RdbcDeleteWrapper, RdbcFunc, RdbcInsertWrapper, RdbcOrder,
+    RdbcQueryWrapper, RdbcTable, RdbcUpdateWrapper, RdbcValue, SQLTable, SchemaTable, TableColumn,
+    UnionTable, UnionType, ValueColumn,
 };
 
 use serde_json;
+use serde_json::to_string;
 use std::cmp::PartialEq;
 use std::collections::HashMap;
 
@@ -159,14 +160,49 @@ impl RdbcSQLRender for PgSQLRender {
         sql_wrapper: &RdbcUpdateWrapper,
         params: &HashMap<String, RdbcValue>,
     ) -> (String, HashMap<String, RdbcValue>) {
-        let value_params = extract_map_params(params);
-        ("".to_string(), HashMap::new())
+        let mut update_vec = vec![];
+        let mut map_params = extract_map_params(params);
+
+        let (table, table_params) = Self::render_table_slice(sql_wrapper.from_table.as_slice());
+        if !table.is_empty() {
+            update_vec.push(format!("UPDATE {}", table));
+            map_params.extend(table_params);
+        }
+
+        let (set_columns, set_params) = Self::render_set_columns(sql_wrapper.column_dml.as_slice());
+        if !set_columns.is_empty() {
+            update_vec.push(format!("SET {}", set_columns));
+            map_params.extend(set_params);
+        }
+        let (where_condition, where_params) =
+            Self::render_where_condition(sql_wrapper.where_condition.as_ref());
+        if !where_condition.is_empty() {
+            update_vec.push(format!("WHERE {}", where_condition));
+            map_params.extend(where_params);
+        }
+
+        (update_vec.join("\n"), map_params)
     }
     fn render_insert_script_with_params(
         sql_wrapper: &RdbcInsertWrapper,
         params: &HashMap<String, RdbcValue>,
     ) -> (String, HashMap<String, RdbcValue>) {
-        let value_params = extract_map_params(params);
+        let mut insert_vec = vec![];
+        let mut map_params = extract_map_params(params);
+        let (table, table_params) = Self::render_table(&sql_wrapper.table);
+        if !table.is_empty() {
+            insert_vec.push(format!("INSERT INTO {}", table));
+            map_params.extend(table_params);
+        }
+
+        let mut insert_columns = vec![];
+        let insert_params = vec![];
+        let dml_columns = sql_wrapper.column_dml.as_slice();
+        for dml_column in dml_columns {
+            let (column, column_params) = Self::render_column_for_compare(&dml_column.column);
+            insert_columns.push(column);
+        }
+
         ("".to_string(), HashMap::new())
     }
     fn render_delete_script_with_params(
@@ -529,10 +565,38 @@ impl PgSQLRender {
         ("".to_string(), HashMap::new())
     }
     fn render_order_columns(columns: &[RdbcOrder]) -> (String, HashMap<String, RdbcValue>) {
-        ("".to_string(), HashMap::new())
+        let mut order_vec = vec![];
+        let mut order_params = HashMap::new();
+        for item in columns {
+            let (column_sql, params_map) = Self::render_order_column(item);
+            order_vec.push(column_sql);
+        }
+        return (order_vec.join(","), order_params);
+    }
+    fn render_order_column(column: &RdbcOrder) -> (String, HashMap<String, RdbcValue>) {
+        let mut order_vec = vec![];
+        let mut order_params = HashMap::new();
+        let order_columns = column.column.as_slice();
+        let order_type = match column.order_type {
+            OrderType::Asc => "ASC",
+            OrderType::Desc => "DESC",
+        };
+        for item in order_columns {
+            let (column_sql, params_map) = Self::render_column_for_compare(item);
+            order_vec.push(format!("{} {}", column_sql, order_type));
+            order_params.extend(params_map);
+        }
+        (order_vec.join(", "), order_params)
     }
     fn render_limit(limit: Option<&u64>, offset: Option<&u64>) -> String {
-        "".to_string()
+        let mut limit_sql = "".to_string();
+        if let Some(limit) = limit {
+            limit_sql = format!("LIMIT {}", limit);
+        }
+        if let Some(offset) = offset {
+            limit_sql = format!("{} OFFSET {}", limit_sql, offset);
+        }
+        return limit_sql;
     }
 
     fn render_union_table(table_slice: &[UnionTable]) -> (String, HashMap<String, RdbcValue>) {
@@ -576,5 +640,39 @@ impl PgSQLRender {
             table = format!("{} AS {}", table, query_table.table_alias);
         }
         return (table, query_params);
+    }
+
+    fn render_set_columns(columns: &[DmlColumn]) -> (String, HashMap<String, RdbcValue>) {
+        let mut set_vec = vec![];
+        let mut set_params = HashMap::new();
+        for item in columns {
+            let (column_sql, column_params) = Self::render_set_column(item);
+            set_vec.push(column_sql);
+            set_params.extend(column_params);
+        }
+        (set_vec.join(","), set_params)
+    }
+
+    fn render_set_column(dml_column: &DmlColumn) -> (String, HashMap<String, RdbcValue>) {
+        let (mut column_sql, mut column_params) =
+            Self::render_column_for_compare(&dml_column.column);
+        match &dml_column.value {
+            RdbcColumnValue::ColumnValue(column) => {
+                let (column_value_sql, _) = Self::render_column_for_compare(column);
+                column_sql = format!("{}={}", column_sql, column_value_sql);
+            }
+            RdbcColumnValue::StaticValue(v) => {
+                let column_id = uuid::Uuid::new_v4().to_string();
+                column_sql = format!("{}=#{{{}}}", column_sql, column_id);
+                column_params.insert(column_id, v.clone());
+            }
+            RdbcColumnValue::ScriptValue(sc) => {
+                column_sql = format!("{}={}", column_sql, sc);
+            }
+            RdbcColumnValue::NullValue => {
+                column_sql = format!("{} = NULL", column_sql);
+            }
+        }
+        (column_sql, column_params)
     }
 }
