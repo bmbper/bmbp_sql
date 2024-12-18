@@ -274,8 +274,20 @@ impl RdbcSQLRender for PgSQLRender {
         sql_wrapper: &RdbcDeleteWrapper,
         params: &HashMap<String, RdbcValue>,
     ) -> (String, HashMap<String, RdbcValue>) {
-        let value_params = extract_map_params(params);
-        ("".to_string(), HashMap::new())
+        let mut delete_vec = vec![];
+        let mut map_params = extract_map_params(params);
+        let (table_sql, table_params) = Self::render_table_slice(sql_wrapper.from_table.as_slice());
+        if !table_sql.is_empty() {
+            delete_vec.push(format!("DELETE FROM {}", table_sql));
+            map_params.extend(table_params);
+        }
+        let (where_condition, where_params) =
+            Self::render_where_condition(sql_wrapper.where_condition.as_ref());
+        if !where_condition.is_empty() {
+            delete_vec.push(format!(" WHERE {}", where_condition));
+            map_params.extend(where_params);
+        }
+        (delete_vec.join("\n"), map_params)
     }
 }
 

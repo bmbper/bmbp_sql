@@ -27,7 +27,7 @@ pub struct RdbcUpdateWrapper {
     pub(crate) params: HashMap<String, RdbcValue>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct RdbcDeleteWrapper {
     pub from_table: Vec<RdbcTable>,
     pub join_table: Vec<JoinTable>,
@@ -40,6 +40,7 @@ pub struct RdbcDeleteWrapper {
     pub(crate) offset_count: Option<u64>,
     pub(crate) params: HashMap<String, RdbcValue>,
 }
+
 #[derive(Debug, Clone)]
 pub struct DmlColumn {
     pub column: RdbcColumn,

@@ -1,11 +1,21 @@
 use crate::wrapper::{RdbcColumn, RdbcQueryWrapper, RdbcTable};
 use crate::{
     CompareColumn, CompareKind, CompareLikeKind, ConditionColumn, ConditionKind, JoinTable,
-    RdbcColumnValue, RdbcCondition, RdbcTableIdent, RdbcValue,
+    RdbcColumnValue, RdbcCondition, RdbcDeleteWrapper, RdbcTableIdent, RdbcUpdateWrapper,
+    RdbcValue,
 };
 
+use crate::build::condition::RdbcWhereCondition;
 use std::collections::HashMap;
 
+impl RdbcWhereCondition for RdbcQueryWrapper {
+    fn get_or_create_where_condition(&mut self) -> &mut RdbcCondition {
+        self.where_condition.get_or_insert_with(RdbcCondition::new)
+    }
+    fn get_from_table_mut(&mut self) -> &mut Vec<RdbcTable> {
+        &mut self.from_table
+    }
+}
 impl RdbcQueryWrapper {
     pub fn new() -> Self {
         Self {
@@ -22,15 +32,14 @@ impl RdbcQueryWrapper {
             params: HashMap::new(),
         }
     }
-
     pub fn with_table<T>() -> Self
     where
         T: RdbcTableIdent,
     {
-        let mut query = Self::new();
-        query.from(T::name());
-        query.select_columns(T::columns());
-        query
+        let mut wrapper = RdbcQueryWrapper::new();
+        wrapper.from(T::name());
+        wrapper.select_columns(T::columns());
+        wrapper
     }
     pub fn with_columns<C>(columns: impl IntoIterator<Item = C>) -> Self
     where
@@ -103,14 +112,6 @@ impl RdbcQueryWrapper {
         self
     }
 
-    pub fn eq<C, V>(&mut self, column: C, value: V) -> &mut Self
-    where
-        RdbcColumn: From<C>,
-        RdbcValue: From<V>,
-    {
-        self.get_or_create_where_condition().eq(column, value);
-        self
-    }
     pub fn like_op<C, V>(&mut self, column: C, value: Option<V>) -> &mut Self
     where
         RdbcColumn: From<C>,

@@ -1,6 +1,7 @@
+use crate::build::condition::RdbcWhereCondition;
 use crate::{
     DmlColumn, JoinTable, RdbcColumn, RdbcColumnValue, RdbcCondition, RdbcDeleteWrapper,
-    RdbcInsertWrapper, RdbcTable, RdbcTableIdent, RdbcUpdateWrapper, RdbcValue,
+    RdbcInsertWrapper, RdbcQueryWrapper, RdbcTable, RdbcTableIdent, RdbcUpdateWrapper, RdbcValue,
 };
 
 impl RdbcInsertWrapper {}
@@ -14,14 +15,6 @@ impl RdbcUpdateWrapper {
         update_wrapper.from(T::name());
         update_wrapper
     }
-    pub fn from<T>(&mut self, table: T) -> &mut Self
-    where
-        RdbcTable: From<T>,
-    {
-        self.from_table.push(RdbcTable::from(table));
-        self
-    }
-
     pub fn set<C, V>(&mut self, column: C, value: V) -> &mut Self
     where
         RdbcColumn: From<C>,
@@ -30,17 +23,34 @@ impl RdbcUpdateWrapper {
         self.column_dml.push(DmlColumn::new(column, value));
         self
     }
-    pub fn eq<C, V>(&mut self, column: C, value: V) -> &mut Self
-    where
-        RdbcColumn: From<C>,
-        RdbcValue: From<V>,
-    {
-        self.get_or_create_where_condition().eq(column, value);
-        self
-    }
     fn get_or_create_where_condition(&mut self) -> &mut RdbcCondition {
         self.where_condition.get_or_insert_with(RdbcCondition::new)
     }
 }
 
-impl RdbcDeleteWrapper {}
+impl RdbcWhereCondition for RdbcUpdateWrapper {
+    fn get_or_create_where_condition(&mut self) -> &mut RdbcCondition {
+        self.where_condition.get_or_insert_with(RdbcCondition::new)
+    }
+    fn get_from_table_mut(&mut self) -> &mut Vec<RdbcTable> {
+        &mut self.from_table
+    }
+}
+impl RdbcDeleteWrapper {
+    pub fn with_table<T>() -> Self
+    where
+        T: RdbcTableIdent,
+    {
+        let mut wrapper = RdbcDeleteWrapper::default();
+        wrapper.from(T::name());
+        wrapper
+    }
+}
+impl RdbcWhereCondition for RdbcDeleteWrapper {
+    fn get_or_create_where_condition(&mut self) -> &mut RdbcCondition {
+        self.where_condition.get_or_insert_with(RdbcCondition::new)
+    }
+    fn get_from_table_mut(&mut self) -> &mut Vec<RdbcTable> {
+        &mut self.from_table
+    }
+}
