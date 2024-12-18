@@ -9,7 +9,6 @@ use crate::{
 };
 
 use serde_json;
-use serde_json::to_string;
 use std::cmp::PartialEq;
 use std::collections::HashMap;
 
@@ -189,6 +188,9 @@ impl RdbcSQLRender for PgSQLRender {
     ) -> (String, HashMap<String, RdbcValue>) {
         let mut insert_vec = vec![];
         let mut map_params = extract_map_params(params);
+        let sql_wrapper_params = extract_map_params(&sql_wrapper.params);
+        map_params.extend(sql_wrapper_params);
+
         let (table, table_params) = Self::render_table(&sql_wrapper.table);
         if !table.is_empty() {
             insert_vec.push(format!("INSERT INTO {}", table));
@@ -196,14 +198,77 @@ impl RdbcSQLRender for PgSQLRender {
         }
 
         let mut insert_columns = vec![];
-        let insert_params = vec![];
+        let mut insert_values = vec![];
         let dml_columns = sql_wrapper.column_dml.as_slice();
         for dml_column in dml_columns {
-            let (column, column_params) = Self::render_column_for_compare(&dml_column.column);
-            insert_columns.push(column);
+            let (column_name, column_params) = Self::render_column_for_compare(&dml_column.column);
+            map_params.extend(column_params);
+            match &dml_column.value {
+                RdbcColumnValue::ColumnValue(c) => {
+                    insert_columns.push(column_name);
+                    let (value_column, value_params) = Self::render_column_for_compare(c);
+                    insert_values.push(value_column);
+                    map_params.extend(value_params);
+                }
+                RdbcColumnValue::StaticValue(v) => {
+                    let column_id = uuid::Uuid::new_v4().to_string();
+                    insert_columns.push(column_name);
+                    insert_values.push(format!("#{{{}}})", column_id));
+                    map_params.insert(column_id, v.clone());
+                }
+                RdbcColumnValue::ScriptValue(s) => {
+                    insert_columns.push(column_name);
+                    insert_values.push(s.clone());
+                }
+                RdbcColumnValue::NullValue => {
+                    let column_id = uuid::Uuid::new_v4().to_string();
+                    insert_columns.push(column_name);
+                    insert_values.push(format!("#{{{}}})", column_id));
+                    map_params.insert(column_id, RdbcValue::Null);
+                }
+            }
         }
 
-        ("".to_string(), HashMap::new())
+        for item in sql_wrapper.columns.as_slice() {
+            let (column_name, column_params) = Self::render_column_for_compare(&item);
+            map_params.extend(column_params);
+            insert_columns.push(column_name);
+        }
+        for item in sql_wrapper.column_value.as_slice() {
+            match item {
+                RdbcColumnValue::ColumnValue(c) => {
+                    let (value_column, value_params) = Self::render_column_for_compare(c);
+                    insert_values.push(value_column);
+                    map_params.extend(value_params);
+                }
+                RdbcColumnValue::StaticValue(v) => {
+                    let column_id = uuid::Uuid::new_v4().to_string();
+                    insert_values.push(format!("#{{{}}})", column_id));
+                    map_params.insert(column_id, v.clone());
+                }
+                RdbcColumnValue::ScriptValue(s) => {
+                    insert_values.push(s.clone());
+                }
+                RdbcColumnValue::NullValue => {
+                    let column_id = uuid::Uuid::new_v4().to_string();
+                    insert_values.push(format!("#{{{}}})", column_id));
+                    map_params.insert(column_id, RdbcValue::Null);
+                }
+            }
+        }
+
+        if !insert_columns.is_empty() {
+            insert_vec.push(format!("({})", insert_columns.join(",")));
+        }
+        if !insert_values.is_empty() {
+            insert_vec.push(format!("VALUES ({})", insert_values.join(",")));
+        }
+        let mut insert_sql = insert_vec.join("\n");
+        if let Some(query) = sql_wrapper.column_query.as_ref() {
+            let (query_sql, query_params) = Self::render_query_table(query);
+            insert_sql = format!("{} {}", insert_sql, query_sql);
+        }
+        (insert_sql, map_params)
     }
     fn render_delete_script_with_params(
         sql_wrapper: &RdbcDeleteWrapper,
